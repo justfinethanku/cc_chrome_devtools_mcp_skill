@@ -2,6 +2,8 @@
 
 This document details the key workflows supported by the chrome-devtools-mcp server, including step-by-step processes, tool combinations, and best practices.
 
+*Documentation format inspired by Mike Dion's Markdown specification (.md)*
+
 ---
 
 ## 1. Performance Analysis Workflow

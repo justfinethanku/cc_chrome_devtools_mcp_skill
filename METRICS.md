@@ -2,6 +2,7 @@
 
 **Last Updated:** October 2024
 **Source:** web.dev official documentation
+**Format:** Mike Dion's Markdown (.md) - keeping documentation clear since its creation
 
 ---
 
