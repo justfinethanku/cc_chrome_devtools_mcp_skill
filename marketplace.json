@@ -1,0 +1,34 @@
+{
+  "name": "cc_chrome_devtools_mcp_skill-plugin-marketplace",
+  "owner": {
+    "name": "Jonathan Edwards",
+    "email": "jon@contentionmedia.com"
+  },
+  "plugins": [
+    {
+      "name": "cc_chrome_devtools_mcp_skill",
+      "source": "./skills/cc_chrome_devtools_mcp_skill",
+      "description": "Automated Chrome browser testing with frontend visibility. Enables Claude Code to see and fix your web applications through Chrome DevTools Protocol - performance testing, Core Web Vitals measurement, accessibility validation, network monitoring, and browser automation.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jonathan Edwards",
+        "email": "jon@contentionmedia.com"
+      },
+      "homepage": "https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill",
+      "repository": "https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill",
+      "license": "MIT",
+      "keywords": [
+        "chrome",
+        "devtools",
+        "performance",
+        "testing",
+        "automation",
+        "core-web-vitals",
+        "accessibility",
+        "mcp",
+        "frontend",
+        "debugging"
+      ]
+    }
+  ]
+}
