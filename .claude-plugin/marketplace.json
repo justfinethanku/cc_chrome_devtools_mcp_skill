@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "cc_chrome_devtools_mcp_skill",
-      "source": ".",
+      "source": "./",
       "description": "Automated Chrome browser testing with frontend visibility. Enables Claude Code to see and fix your web applications through Chrome DevTools Protocol - performance testing, Core Web Vitals measurement, accessibility validation, network monitoring, and browser automation.",
       "version": "1.0.0",
       "author": {
