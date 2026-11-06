@@ -209,6 +209,44 @@ replacement and attachment disconnect were checked with the real v1.12.0
 connection code against a synthetic local CDP peer, without launching Chrome.
 These checks do not verify real Chrome process termination or profile cleanup.
 
+### Recover from an interrupted local update
+
+With Claude Code 2.1.319, updating from a local marketplace checkout with a
+truncated `.claude-plugin/plugin.json` can exit successfully while recording
+version `unknown`. The skill then disappears from `plugin details`. Diagnose
+the installed state instead of relying on the update command's exit status:
+
+```bash
+claude plugin list --json
+claude plugin details cc_chrome_devtools_mcp_skill
+```
+
+Inspect the matching record's `errors`, `version`, and `readFromFolder`. For a
+local marketplace, restore the checkout's complete manifest from a known-good
+revision or saved copy, then validate that checkout before retrying:
+
+```bash
+claude plugin validate /PATH/TO/cc_chrome_devtools_mcp_skill --json
+claude plugin update cc_chrome_devtools_mcp_skill@cc_chrome_devtools_mcp_skill-plugin-marketplace
+claude plugin list --json
+claude plugin details cc_chrome_devtools_mcp_skill
+```
+
+Replace `/PATH/TO/cc_chrome_devtools_mcp_skill` with the local marketplace
+checkout. Continue only after validation succeeds, the installed record has
+the expected release version and no errors, and details shows one skill and zero
+bundled MCP servers.
+Restart the affected session to load the repaired instruction package. These
+steps were tested with a local checkout; they do not establish remote download
+rollback behavior. Repairing the instruction files does not require removing the
+separate MCP registration or profile.
+
+An interrupted `.mcp.json` write is a separate failure. In the tested CLI,
+`mcp get` can show a user entry while the malformed project entry is ignored;
+project-scoped removal refuses to edit the malformed file. Restore its saved,
+complete JSON and inspect the effective registration again before scoped removal.
+Preserve other server entries and profile data while repairing configuration.
+
 ## Captures and filesystem access
 
 Paths are resolved on the MCP server, except uploads whose paths must be
