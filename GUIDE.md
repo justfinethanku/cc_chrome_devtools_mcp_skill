@@ -92,6 +92,85 @@ Attach to a separately launched test browser only after following
 }
 ```
 
+## Recover or remove a browser connection
+
+The instruction plugin, MCP registration, running MCP process, and browser have
+separate lifecycles. Plugin update and uninstall leave a server registered with
+`claude mcp add` unchanged. An existing Claude session can also retain its running
+server until it stops or restarts. Removing a registration changes future
+configuration; it does not terminate every client already using that server.
+
+### Recover the intended profile
+
+1. Run `claude mcp get chrome-devtools` from the affected project's root. Inspect
+   the reported scope, command, package version, and arguments. In Claude Code's
+   CLI, local scope takes precedence over approved project scope, then user
+   scope; entries replace one another in full, without merging isolation flags.
+   Project entries still require the normal workspace trust and MCP approval flow. Other client
+   surfaces or managed settings can have different precedence; see the
+   [official scope hierarchy](https://code.claude.com/docs/en/mcp#scope-hierarchy-and-precedence).
+2. Remove an obsolete entry only from the scope you intend to change. For
+   example, remove an old private project attachment with:
+
+   ```bash
+   claude mcp remove --scope local chrome-devtools
+   claude mcp get chrome-devtools
+   ```
+
+   The second command can reveal a project or user entry that was hidden by the
+   local entry. Review it before using browser tools. To remove a shared project
+   entry, use `--scope project` from that project's root; this edits `.mcp.json`
+   for the team. Use `--scope user` for a user entry. Repeat inspection after each
+   removal until the effective configuration is the intended one.
+3. For a fresh launch, use [the user-scoped isolated registration](README.md#register-the-mcp-server)
+   after removing an obsolete entry at that scope. For an attachment, verify the
+   endpoint belongs to the test browser you launched and its expected profile.
+   Close that owned browser when replacing it, then obtain the new endpoint.
+4. Stop or restart each affected Claude session to apply the change. In the new
+   session, list pages and confirm the expected test tabs before interacting.
+   A connected MCP status alone does not establish browser or profile identity.
+
+An HTTP `--browserUrl` rediscovers the WebSocket endpoint when connecting. If the
+old browser exits and another process reuses its port, the next connection can
+reach a different browser. Treat disconnects, timeouts, and browser restarts as
+reasons to check identity again. An exact `--wsEndpoint` with the old browser ID
+fails when the replacement exposes only a different ID, but neither that path
+nor loopback is authentication: another local process can impersonate the peer.
+Use a separately owned test browser and [the external-browser setup](README.md#connect-to-existing-chrome-instance).
+
+### Remove the installation
+
+1. Stop the Claude sessions using the connection. Uninstall the instruction
+   plugin at its installed scope; for the README's default user install, run:
+
+   ```bash
+   claude plugin uninstall cc_chrome_devtools_mcp_skill@cc_chrome_devtools_mcp_skill-plugin-marketplace
+   ```
+
+2. Inspect `claude mcp get chrome-devtools` in each project where you used it.
+   Remove each registration you intend to retire using its explicit scope, as
+   in the recovery procedure. If the only entry is the README's user entry, run:
+
+   ```bash
+   claude mcp remove --scope user chrome-devtools
+   claude mcp get chrome-devtools
+   ```
+
+   With no other entry, the last command exits nonzero and reports no server
+   named `chrome-devtools`. If another entry appears, inspect its scope instead
+   of assuming browser access has been removed.
+3. Close any externally launched test browser you own. Disconnecting MCP from
+   an attached browser leaves that browser and its debugging listener running.
+   Remove only that test browser's recorded disposable profile after it exits,
+   if you no longer need its data. Persistent profiles remain user data; plugin
+   uninstall is not profile deletion. For a manual skill install, remove the
+   copied skill separately when you intend to retire it.
+
+Lifecycle checks used temporary Claude Code 2.1.319 configurations. Endpoint
+replacement and attachment disconnect were checked with the real v1.12.0
+connection code against a synthetic local CDP peer, without launching Chrome.
+These checks do not verify real Chrome process termination or profile cleanup.
+
 ## Captures and filesystem access
 
 Paths are resolved on the MCP server, except uploads whose paths must be

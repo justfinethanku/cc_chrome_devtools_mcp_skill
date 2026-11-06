@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from urllib.parse import unquote, urlsplit
@@ -126,6 +127,62 @@ class ClaudeInstallationTests(unittest.TestCase):
         result = self.cli("plugin", "validate", manifest, "--json", success=False)
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(json.loads(result.stdout)["success"])
+
+    def register_inert_server(self, scope, marker):
+        # mcp get may start the configured command. This process exits without
+        # network, model calls, or a browser; its arguments identify the config.
+        self.cli("mcp", "add", "--scope", scope, "chrome-devtools", "--",
+                 sys.executable, "-c", "pass", marker)
+
+    def test_plugin_update_and_uninstall_preserve_separate_mcp_registration(self):
+        plugin_id = f"{PLUGIN}@{self.marketplace['name']}"
+        self.cli("plugin", "marketplace", "add", self.package)
+        self.cli("plugin", "install", plugin_id)
+        endpoint = "--browserUrl=http://127.0.0.1:19222"
+        self.register_inert_server("user", endpoint)
+        manifest_path = self.package / ".claude-plugin/plugin.json"
+        manifest = dict(self.manifest, version="99.0.0")
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        self.cli("plugin", "update", plugin_id)
+        self.assertIn(f"({PLUGIN}) 99.0.0",
+                      self.cli("plugin", "details", PLUGIN).stdout)
+        for action in ("updated", "uninstalled"):
+            with self.subTest(action=action):
+                if action == "uninstalled":
+                    self.cli("plugin", "uninstall", plugin_id)
+                    self.assertEqual(json.loads(self.cli("plugin", "list", "--json").stdout), [])
+                details = self.cli("mcp", "get", "chrome-devtools").stdout
+                self.assertIn("Scope: User config", details)
+                self.assertIn(endpoint, details)
+        self.cli("mcp", "remove", "--scope", "user", "chrome-devtools")
+        self.assertNotEqual(self.cli("mcp", "get", "chrome-devtools", success=False).returncode, 0)
+
+    def test_scope_removal_reveals_next_registration_without_merging_flags(self):
+        self.register_inert_server("user", "--isolated=true")
+        self.register_inert_server("project", "--browserUrl=http://127.0.0.1:19222")
+        self.register_inert_server("local", "--browserUrl=http://127.0.0.1:19223")
+        local = self.cli("mcp", "get", "chrome-devtools").stdout
+        self.assertIn("Scope: Local config", local)
+        self.assertIn("--browserUrl=http://127.0.0.1:19223", local)
+        self.assertNotIn("--isolated=true", local)
+        self.cli("mcp", "remove", "--scope", "local", "chrome-devtools")
+        # An unapproved project entry does not override an available user entry.
+        pending = self.cli("mcp", "get", "chrome-devtools").stdout
+        self.assertIn("Scope: User config", pending)
+        self.assertIn("--isolated=true", pending)
+        settings = self.config / "settings.json"
+        settings.write_text(json.dumps({"enabledMcpjsonServers": ["chrome-devtools"]}),
+                            encoding="utf-8")
+        for scope, expected, absent in (
+                ("project", "--browserUrl=http://127.0.0.1:19222", "--isolated=true"),
+                ("user", "--isolated=true", "--browserUrl=")):
+            with self.subTest(scope=scope):
+                details = self.cli("mcp", "get", "chrome-devtools").stdout
+                self.assertIn(f"Scope: {scope.capitalize()} config", details)
+                self.assertIn(expected, details)
+                self.assertNotIn(absent, details)
+                self.cli("mcp", "remove", "--scope", scope, "chrome-devtools")
+        self.assertNotEqual(self.cli("mcp", "get", "chrome-devtools", success=False).returncode, 0)
 
 
 if __name__ == "__main__":

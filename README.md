@@ -79,6 +79,13 @@ If `chrome-devtools` is already registered, inspect it with `claude mcp get`
 before updating it; do not overwrite an existing attachment or custom binary
 configuration blindly. See [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
+Check from each project where you use the server: local and approved project
+registrations take precedence over the same user-scoped name, and their arguments
+replace the whole entry. A user-scoped `--isolated=true` does not change a project attachment.
+Use [the session recovery procedure](GUIDE.md#recover-or-remove-a-browser-connection)
+when changing profiles, updating, or uninstalling. Updating or uninstalling this
+instruction plugin leaves the separately registered server configuration intact.
+
 The package version is pinned to the version used for the examples. To upgrade,
 review upstream releases, update the package argument, and recheck tool discovery
 and schemas. `@latest` changes independently of this skill.
@@ -210,11 +217,15 @@ python3 -m unittest discover -s tests -v
 
 The suite checks direct loading from an arbitrarily named checkout, local
 marketplace discovery and installation, the installed skill inventory and file
-contents, manual-copy reference availability, and rejection of invalid metadata.
+contents, manual-copy reference availability, rejection of invalid metadata,
+MCP scope precedence, and separate registration persistence through plugin update
+and uninstall.
 It creates temporary home and Claude configuration directories and removes them
-after each test. It runs plugin management commands only; no model calls, MCP
-server or Chrome session are started. A missing Claude CLI fails the installation
-tests; set `CLAUDE_BIN` if its executable has a different name or path.
+after each test. MCP lifecycle tests register an inert Python command that exits
+without network access; the CLI may start it while inspecting configuration.
+No model calls, external MCP server, or Chrome session are started. A missing
+Claude CLI fails the installation tests; set `CLAUDE_BIN` if its executable has
+a different name or path.
 
 These checks cover this instruction package. They do not verify the external
 MCP server's tools, browser behavior or the accuracy of every workflow example.
