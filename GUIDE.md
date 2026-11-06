@@ -38,7 +38,7 @@ check tool discovery and the changed schemas again.
 | `--executablePath=PATH` | Select a Chrome/Chromium executable on the server host. |
 | `--channel=stable` | Choose stable, beta, dev, or canary. |
 | `--viewport=1920x1080` | Set launch viewport dimensions. |
-| `--userDataDir=PATH` | Choose a persistent launch profile instead of a temporary profile. |
+| `--userDataDir=PATH` | Choose a persistent launch profile; remove `--isolated=true` first. |
 | `--browserUrl=URL` | Attach through an existing browser's HTTP debugging endpoint. |
 | `--wsEndpoint=URL` | Attach through its WebSocket endpoint instead. |
 | `--wsHeaders=JSON` | Pass headers to an already authenticated WebSocket endpoint. |
@@ -49,8 +49,46 @@ check tool discovery and the changed schemas again.
 | `--workspace=PATH` | Allow file tools to access a directory; repeat for multiple roots. |
 
 The correct persistent-profile flag is `--userDataDir`; use the spelling in the
-installed help. Connection and launch options serve different modes. Do not
-combine attachment with expectations of temporary-profile cleanup.
+installed help. Choose the browser mode before combining options.
+
+### Choose the browser mode
+
+These modes describe the pinned v1.12.0 MCP server registered in the README.
+The instruction plugin does not allocate profiles or own browser processes.
+
+| Mode | Connection arguments | Browser and profile ownership |
+| --- | --- | --- |
+| Temporary launch (README default) | `--isolated=true`, without an attachment or `--userDataDir` | The server launches and closes Chrome; Puppeteer allocates the temporary profile and handles its cleanup. |
+| Persistent launch | `--userDataDir=PATH`, without `--isolated=true` or an attachment | The server launches and closes Chrome; the chosen profile remains on disk. Replace `PATH` with a dedicated test profile. |
+| HTTP attachment | `--browserUrl=URL` | You launch and close the external test browser and manage its profile. Disconnecting MCP leaves it running. |
+| WebSocket attachment | `--wsEndpoint=URL` | Same external ownership as HTTP attachment; use the endpoint from that test browser. |
+
+When switching from the README's temporary launch to a persistent launch,
+replace `--isolated=true` with `--userDataDir=PATH`. Appending the profile flag
+fails at startup with `Arguments userDataDir and isolated are mutually exclusive`.
+The server also rejects `--userDataDir` with either attachment flag, both
+attachment flags together, and an explicit `--channel` or `--executablePath`
+with either attachment flag. Launch settings do not configure an external browser.
+
+Isolation lasts for the launched browser's lifetime. Repeated tool calls through
+one running server reuse its browser; `--isolated=true` does not reset cookies or
+storage before each call. For a fresh browser profile, stop that server and start
+a new isolated launch using [the recovery procedure](#recover-or-remove-a-browser-connection).
+
+Without isolation or an explicit profile, the MCP server selects a persistent
+profile under `~/.cache/chrome-devtools-mcp/chrome-profile` (with a suffix for a
+non-stable channel). This path is shared by launches using the same home and
+channel, including launches from different projects. Registration scope does
+not give each project its own profile directory. For parallel independent tests,
+use separate isolated launches or distinct dedicated persistent profile paths.
+If Chrome reports that a profile is already running, close the test browser that
+owns it or choose a separate profile; retain its data and lock files while it runs.
+
+Mode conflicts and browser ownership were checked against the published v1.12.0
+configuration and connection code. Launch, close, failure, and retry checks used
+inert Puppeteer fixtures; they did not run Chrome, reproduce an OS profile lock,
+or verify temporary-directory cleanup. See the [upstream configuration reference](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/configuration.md)
+when changing versions.
 
 ## Configuration examples
 

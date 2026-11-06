@@ -95,6 +95,10 @@ cleaned up after the browser closes. It does not redact browser data or isolate
 an attached browser. Read [security considerations](SKILL.md#security-considerations)
 before using accounts or exporting captures.
 
+For persistent profiles or parallel sessions, choose the arguments using
+[browser modes and profile ownership](GUIDE.md#choose-the-browser-mode).
+Adding `--userDataDir` to the isolated registration causes a startup conflict.
+
 ### Verify the connection
 
 Restart Claude Code, open `/mcp`, and check that `chrome-devtools` connects. Ask
