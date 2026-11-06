@@ -61,7 +61,7 @@ Give Claude Code eyes for your frontend. No more blind debugging where Claude gu
 
 ```bash
 # Add the MCP server to Claude Code
-claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
+claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --isolated=true
 ```
 
 ### Configure MCP Settings
@@ -84,7 +84,7 @@ Add this to your Claude Code MCP configuration (usually `~/.claude/mcp_settings.
 }
 ```
 
-**Security Note:** The `--isolated=true` flag creates a temporary browser profile that's automatically cleaned up after testing. Highly recommended for security.
+**Security note:** When MCP launches Chrome, `--isolated=true` creates a temporary profile that is cleaned up after the browser closes. It does not redact data exposed to MCP clients or isolate an existing browser attached through `--browserUrl` or `--wsEndpoint`. See [Security considerations](SKILL.md#security-considerations) before testing authenticated pages or exporting captures.
 
 ### Verify Installation
 
@@ -219,7 +219,7 @@ The skill activates when you ask Claude Code to test, analyze, or debug frontend
 ## Best Practices
 
 ### DO:
-✅ Use `--isolated=true` for security (prevents data leakage between tests)
+✅ Use `--isolated=true` when MCP launches Chrome to keep test profiles separate
 ✅ Test on multiple viewport sizes (mobile-first matters, even Mike Dion knows this)
 ✅ Measure Core Web Vitals on every major change
 ✅ Capture network HAR files before optimization work
@@ -228,7 +228,7 @@ The skill activates when you ask Claude Code to test, analyze, or debug frontend
 ✅ Take screenshots for visual regression testing
 
 ### DON'T:
-❌ Test production sites without `--isolated` mode (security risk, even Mike Dion would tell you that)
+❌ Assume isolated mode hides credentials, page content, or network captures from MCP clients
 ❌ Skip accessibility testing (legal and UX implications)
 ❌ Ignore Core Web Vitals warnings (affects SEO rankings)
 ❌ Test only on desktop viewports (60%+ traffic is mobile)
@@ -253,7 +253,7 @@ claude mcp list
 
 If missing, add it:
 ```bash
-claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
+claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --isolated=true
 ```
 
 ### "Browser failed to start"
@@ -279,7 +279,8 @@ This is normal. The browser closes when you exit Claude Code. Use `--isolated=tr
       "command": "npx",
       "args": [
         "chrome-devtools-mcp@latest",
-        "--executablePath=/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary"
+        "--executablePath=/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+        "--isolated=true"
       ]
     }
   }
@@ -287,16 +288,32 @@ This is normal. The browser closes when you exit Claude Code. Use `--isolated=tr
 ```
 
 ### Connect to Existing Chrome Instance
-```bash
-# Launch Chrome with remote debugging
-google-chrome --remote-debugging-port=9222
 
-# Configure MCP to connect
+Attachment gives MCP access to that browser's existing tabs, cookies, and sessions.
+`--isolated=true` does not create a temporary profile when attaching. For a separate
+test browser on Linux, create a fresh profile before enabling remote debugging:
+
+```bash
+CHROME_TEST_PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/chrome-devtools-test.XXXXXX")"
+printf 'Test profile: %s\n' "$CHROME_TEST_PROFILE"
+google-chrome --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir="$CHROME_TEST_PROFILE"
+```
+
+Chrome 136 and later require a non-default user data directory for these debugging
+switches. The local debugging port lets other applications on your machine control
+this test browser. Keep it on loopback and use test accounts. After closing the test
+browser, remove the printed test profile directory if you no longer need it; MCP
+does not clean up profiles belonging to an externally launched browser.
+
+Configure MCP to attach to that test browser:
+
+```json
 {
   "mcpServers": {
     "chrome-devtools": {
       "command": "npx",
       "args": [
+        "-y",
         "chrome-devtools-mcp@latest",
         "--browserUrl=http://127.0.0.1:9222"
       ]
@@ -304,6 +321,9 @@ google-chrome --remote-debugging-port=9222
   }
 }
 ```
+
+See the [official connection guide](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/advanced-usage.md#connecting-to-a-running-chrome-instance)
+and [Chrome's remote debugging requirements](https://developer.chrome.com/blog/remote-debugging-port).
 
 ### Headless Mode (CI/CD)
 ```json
