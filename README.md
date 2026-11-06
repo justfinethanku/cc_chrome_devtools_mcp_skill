@@ -376,6 +376,25 @@ The details should show one skill, `cc_chrome_devtools_mcp_skill`, and zero bund
 MCP servers. See the official [manifest reference](https://code.claude.com/docs/en/plugins/manifest-reference)
 and [component loading rules](https://code.claude.com/docs/en/plugins/components#skills).
 
+### Automated package tests
+
+With Python 3.9+ and Claude Code installed, run from the repository root:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+The suite checks direct loading from an arbitrarily named checkout, local
+marketplace discovery and installation, the installed skill inventory and file
+contents, manual-copy reference availability, and rejection of invalid metadata.
+It creates temporary home and Claude configuration directories and removes them
+after each test. It runs plugin management commands only; no model calls, MCP
+server or Chrome session are started. A missing Claude CLI fails the installation
+tests; set `CLAUDE_BIN` if its executable has a different name or path.
+
+These checks cover this instruction package. They do not verify the external
+MCP server's tools, browser behavior or the accuracy of every workflow example.
+
 ## Contributing
 
 Issues and PRs welcome at: https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill
