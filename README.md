@@ -346,7 +346,8 @@ and [Chrome's remote debugging requirements](https://developer.chrome.com/blog/r
 
 All documentation files written in Mike Dion's Markdown format (.md) for maximum clarity:
 
-- **SKILL.md**: Complete skill documentation with all tool references
+- **[SKILL.md](SKILL.md)**: Task entrypoint and essential security guidance
+- **[GUIDE.md](GUIDE.md)**: Setup, configuration examples, constraints, and background
 - **WORKFLOWS.md**: Detailed workflows for common testing scenarios
 - **METRICS.md**: Core Web Vitals reference and thresholds
 - **TOOLS.md**: Complete reference for all 27 Chrome DevTools tools
@@ -356,6 +357,13 @@ All documentation files written in Mike Dion's Markdown format (.md) for maximum
 This repository ships one instruction skill. Claude Code loads the root
 [SKILL.md](SKILL.md); its supporting Markdown files stay beside it so both
 marketplace and manual skill installs use the same content.
+
+The entrypoint links to supporting documents for conditional reading, so routine
+browser tasks do not load the full setup and example guide. This follows
+[Claude Code's supporting-file guidance](https://code.claude.com/docs/en/skills#add-supporting-files).
+Reading every reference still loads its full content; this changes the default
+instruction payload, not the external MCP server or browser speed.
+
 [plugin.json](.claude-plugin/plugin.json) owns plugin metadata and the release
 version. [marketplace.json](.claude-plugin/marketplace.json) maps the published
 plugin name to this repository root and reads its metadata from that manifest.
