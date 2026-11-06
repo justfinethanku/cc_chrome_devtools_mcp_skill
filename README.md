@@ -100,6 +100,9 @@ before using accounts or exporting captures.
 For persistent profiles or parallel sessions, choose the arguments using
 [browser modes and profile ownership](GUIDE.md#choose-the-browser-mode).
 Adding `--userDataDir` to the isolated registration causes a startup conflict.
+Use [an absolute profile path](GUIDE.md#keep-a-persistent-profile-stable-across-projects)
+when retaining a persistent profile across projects; relative paths depend on
+the server's working directory.
 
 ### Verify the connection
 

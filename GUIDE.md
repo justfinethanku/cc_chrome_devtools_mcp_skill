@@ -38,7 +38,7 @@ check tool discovery and the changed schemas again.
 | `--executablePath=PATH` | Select a Chrome/Chromium executable on the server host. |
 | `--channel=stable` | Choose stable, beta, dev, or canary. |
 | `--viewport=1920x1080` | Set launch viewport dimensions. |
-| `--userDataDir=PATH` | Choose a persistent launch profile; remove `--isolated=true` first. |
+| `--userDataDir=PATH` | Choose a persistent launch profile using an absolute path on the server host; remove `--isolated=true` first. |
 | `--browserUrl=URL` | Attach through an existing browser's HTTP debugging endpoint. |
 | `--wsEndpoint=URL` | Attach through its WebSocket endpoint instead. |
 | `--wsHeaders=JSON` | Pass headers to an already authenticated WebSocket endpoint. |
@@ -89,6 +89,67 @@ configuration and connection code. Launch, close, failure, and retry checks used
 inert Puppeteer fixtures; they did not run Chrome, reproduce an OS profile lock,
 or verify temporary-directory cleanup. See the [upstream configuration reference](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/configuration.md)
 when changing versions.
+
+### Keep a persistent profile stable across projects
+
+For v1.12.0 launches, use an absolute `--userDataDir` path on the MCP server
+host. Puppeteer resolves a relative value such as `./test-profile` from the
+server process's working directory, not from the configuration file's directory.
+The same user-scoped registration can therefore select different profile paths
+when the server starts from different projects. MCP initialization and tool
+discovery can succeed in both projects before any browser launches.
+
+JSON argument strings do not run through a shell: `"--userDataDir=~/test-profile"`
+passes a literal `~`. In the checked Linux launcher, that becomes a directory
+named `~` under the server's working directory. Use the full absolute path in
+JSON. In a POSIX shell command, `"--userDataDir=$PROFILE_DIR"` expands the shell
+variable before Claude saves the argument.
+
+To repair a user-scoped persistent launch while retaining its original profile:
+
+1. Inspect `claude mcp get chrome-devtools` from each affected project. Record
+   the scope and complete arguments. Stop the affected Claude sessions and their
+   owned test browsers before changing the registration. If another scope is
+   selected, use [the scope recovery procedure](#recover-the-intended-profile)
+   to locate the entry you intend to change.
+2. Identify the existing dedicated test profile you want to retain. Resolve it
+   on the server host in a POSIX shell:
+
+   ```bash
+   PROFILE_DIR="$(cd -- "/ABSOLUTE/PATH/TO/EXISTING/TEST-PROFILE" && pwd -P)"
+   printf '%s\n' "$PROFILE_DIR"
+   ```
+
+   Replace the placeholder with that existing directory. The command must
+   succeed and print its absolute path. If a relative registration has already
+   selected several directories, choose the intended one before proceeding;
+   do not move, merge, or delete their contents as part of this repair.
+3. Replace only the user entry. For the standard pinned server with no custom
+   options, run in the same shell:
+
+   ```bash
+   claude mcp remove --scope user chrome-devtools
+   claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@1.12.0 "--userDataDir=$PROFILE_DIR"
+   claude mcp get chrome-devtools
+   ```
+
+   Preserve any recorded custom executable and other intended launch options
+   when adapting the command. Leave out `--isolated=true` and attachment flags
+   for this persistent launch. If registration fails after removal, retry the
+   corrected add command; the profile directory remains separate from it.
+4. Inspect the effective entry from each project again. It should show the
+   same absolute profile path and intended scope. Restart the affected sessions,
+   then verify the expected test tabs and profile before continuing browser work.
+   Updating or uninstalling the instruction plugin does not rewrite this path.
+
+This migration was checked on Linux with Claude Code 2.1.319 and the published
+v1.12.0 server. A real MCP tool call reached Puppeteer's launcher with an
+argument-recording executable: two working directories selected different
+relative paths, while the repaired absolute path stayed the same. The original
+synthetic profile file remained unchanged. The executable deliberately exited;
+no Chrome session, cookies, profile lock, or browser-data migration was tested.
+See the [upstream launch implementation](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/src/BrowserManager.ts)
+and [Puppeteer launch options](https://pptr.dev/api/puppeteer.launchoptions).
 
 ## Configuration examples
 
