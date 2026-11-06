@@ -351,6 +351,31 @@ All documentation files written in Mike Dion's Markdown format (.md) for maximum
 - **METRICS.md**: Core Web Vitals reference and thresholds
 - **TOOLS.md**: Complete reference for all 27 Chrome DevTools tools
 
+## Plugin structure and validation
+
+This repository ships one instruction skill. Claude Code loads the root
+[SKILL.md](SKILL.md); its supporting Markdown files stay beside it so both
+marketplace and manual skill installs use the same content.
+[plugin.json](.claude-plugin/plugin.json) owns plugin metadata and the release
+version. [marketplace.json](.claude-plugin/marketplace.json) maps the published
+plugin name to this repository root and reads its metadata from that manifest.
+Bump the version in `plugin.json` when releasing an update.
+
+Configure the MCP server separately. The external `chrome-devtools-mcp` process
+supplies tools and manages the Chrome connection,
+as described in [Prerequisites](#prerequisites).
+
+For local packaging checks, run these from the repository root:
+
+```bash
+claude plugin validate .
+claude --plugin-dir . plugin details cc_chrome_devtools_mcp_skill
+```
+
+The details should show one skill, `cc_chrome_devtools_mcp_skill`, and zero bundled
+MCP servers. See the official [manifest reference](https://code.claude.com/docs/en/plugins/manifest-reference)
+and [component loading rules](https://code.claude.com/docs/en/plugins/components#skills).
+
 ## Contributing
 
 Issues and PRs welcome at: https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill

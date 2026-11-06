@@ -2,15 +2,13 @@
   "name": "cc_chrome_devtools_mcp_skill",
   "displayName": "Chrome DevTools MCP Skill",
   "description": "Automated Chrome browser testing with frontend visibility. Enables Claude Code to see and fix your web applications through Chrome DevTools Protocol - performance testing, Core Web Vitals measurement, accessibility validation, network monitoring, and browser automation.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Jonathan Edwards",
-    "url": "https://github.com/justfinethanku"
+    "url": "https://github.com/justfinethanku",
+    "email": "jon@contentionmedia.com"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill"
-  },
+  "repository": "https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill",
   "license": "MIT",
   "keywords": [
     "chrome",
@@ -23,5 +21,6 @@
     "mcp",
     "frontend",
     "debugging"
-  ]
+  ],
+  "homepage": "https://github.com/justfinethanku/cc_chrome_devtools_mcp_skill"
 }
