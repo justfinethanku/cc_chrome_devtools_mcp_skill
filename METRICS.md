@@ -1,6 +1,6 @@
 # Core Web Vitals Metrics Reference
 
-**Last Updated:** October 2024
+**Measurement guidance checked:** November 6, 2026
 **Source:** web.dev official documentation
 **Format:** Mike Dion's Markdown (.md) - keeping documentation clear since its creation
 
@@ -30,7 +30,8 @@ Core Web Vitals are Google's standardized metrics for measuring user experience 
 - **Needs Improvement:** 200-500ms
 - **Poor:** > 500ms
 
-**Measurement:** Requires field data (real user interactions)
+**Measurement:** Representative field data assesses real-user INP. Lab interactions
+can reproduce and diagnose latency, but do not establish field percentiles.
 
 ---
 
@@ -89,7 +90,7 @@ Core Web Vitals are Google's standardized metrics for measuring user experience 
 - May flag potential problems that don't affect real users
 - Cannot capture interaction issues outside lab test scenarios
 
-**Official guidance:** "TBT may be a reasonable proxy metric for INP for the lab but it's not a substitute for INP in and of itself."
+**Guidance:** TBT can help diagnose load-time responsiveness, but it is not a substitute for INP.
 
 ---
 
@@ -106,7 +107,9 @@ The transition from First Input Delay (FID) to INP as a Core Web Vital:
 
 ---
 
-## Field vs Lab Data
+<a id="field-vs-lab-data"></a>
+
+## Field and lab data
 
 ### Field Data (Real User Monitoring)
 
@@ -114,7 +117,7 @@ The transition from First Input Delay (FID) to INP as a Core Web Vital:
 - Collected from actual users in real-world conditions
 - Reflects diverse device capabilities, network conditions, and user interactions
 - **Used by Google for search rankings**
-- Updated every 28 days in Chrome User Experience Report (CrUX)
+- CrUX reports use a rolling 28-day collection window; the API updates daily
 - Can measure all three Core Web Vitals including INP
 
 **Data sources:**
@@ -132,7 +135,7 @@ The transition from First Input Delay (FID) to INP as a Core Web Vital:
 - Consistent and reproducible results
 - Ideal for debugging and pre-production testing
 - **Not used for search rankings**
-- Cannot measure INP (requires real user interactions)
+- Can diagnose interaction latency by exercising interactions; a load-only audit has no INP sample
 - Uses TBT as proxy for responsiveness
 
 **Data sources:**
@@ -166,7 +169,7 @@ Core Web Vitals are evaluated at the **75th percentile** of page loads, meaning:
 
 1. **Field data trumps lab data:** Only field data affects search rankings and represents actual user experience.
 
-2. **INP requires real interactions:** You cannot measure INP in lab environments; use TBT as a directional indicator during development.
+2. **INP requires interactions:** Exercise actual interactions to diagnose INP in the lab; a load-only test cannot supply representative field INP. Use TBT only as a directional indicator.
 
 3. **All three metrics matter:** Sites must pass all three Core Web Vitals thresholds, not just one or two.
 
@@ -186,3 +189,11 @@ Core Web Vitals are evaluated at the **75th percentile** of page loads, meaning:
 - **Lab vs Field Data:** https://web.dev/articles/lab-and-field-data-differences
 - **INP Launch Announcement:** https://web.dev/blog/inp-cwv-launch
 - **PageSpeed Insights:** https://pagespeed.web.dev
+
+## Diagnose interactions in the lab
+
+A Chrome trace with deliberate user interactions can help reproduce and diagnose
+slow interactions. A page-load trace without interactions cannot establish INP.
+A local sample is not the site's field percentile or a WCAG/accessibility score.
+See [Google's lab diagnosis guidance](https://web.dev/articles/optimize-inp#diagnose-slow-interactions-in-the-lab)
+and [CrUX collection windows](https://developer.chrome.com/docs/crux/api).

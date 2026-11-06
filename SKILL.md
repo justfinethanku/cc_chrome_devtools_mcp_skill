@@ -1,6 +1,6 @@
 ---
 name: cc_chrome_devtools_mcp_skill
-description: Comprehensive Chrome DevTools automation for performance testing, Core Web Vitals measurement (INP, LCP, CLS), network monitoring, accessibility validation, responsive testing, and browser automation. Uses Chrome DevTools Protocol via MCP to provide professional-grade web application testing, debugging, and analysis capabilities including performance tracing, HAR export, device emulation, and multi-page workflows.
+description: Comprehensive Chrome DevTools automation for performance testing, Core Web Vitals measurement (INP, LCP, CLS), network inspection, accessibility investigation, responsive testing, and browser automation. Uses Chrome DevTools Protocol via MCP to provide professional-grade web application testing, debugging, and analysis capabilities including performance tracing, device emulation, and multi-page workflows.
 ---
 
 # Chrome DevTools testing skill
@@ -13,7 +13,8 @@ The browser starts on first tool use, rather than on MCP connection.
 
 1. Use the target URL, browser session, and interaction from the user's request.
 2. Use the connected server's tool schemas for available names and parameters.
-   The bundled detailed references describe v0.5.1; `@latest` changes independently.
+   The bundled reference was checked against v1.12.0; `@latest` changes independently.
+   Use `pageId` from `list_pages` or `new_page` for page-targeted calls.
 3. Take an accessibility snapshot to identify element UIDs before interacting.
    Recheck the page after navigation or state changes, and wait for the expected
    result before drawing a conclusion.
@@ -32,7 +33,7 @@ Read only the supporting material needed for the task:
 - For Core Web Vitals thresholds and measurement interpretation, read
   [METRICS.md](METRICS.md). Record the test conditions; distinguish a lab trace
   from field measurements.
-- For the original overview, configuration examples, constraints, and upstream
+- For configuration examples, constraints, and upstream
   links, read the relevant section of [GUIDE.md](GUIDE.md).
 
 ## Security considerations
@@ -76,7 +77,7 @@ performance tools may send trace URLs to the CrUX API. Use
 outbound data paths to be disabled. These flags do not redact browser content.
 
 Security behavior checked against `chrome-devtools-mcp@1.12.0` on November 6,
-2026. This repository's older tool reference describes v0.5.1; `@latest` changes
+2026. The tool reference was checked against that version; `@latest` changes
 independently. Check the installed version and current upstream documentation
 when upgrading:
 
