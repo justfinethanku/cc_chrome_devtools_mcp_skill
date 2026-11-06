@@ -14,7 +14,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 # Public install identity: deliberately independent of the checkout directory.
 PLUGIN = "cc_chrome_devtools_mcp_skill"
-PAYLOAD = ("SKILL.md", "README.md", "TOOLS.md", "WORKFLOWS.md", "METRICS.md")
+PAYLOAD = ("SKILL.md", "README.md", "GUIDE.md", "TOOLS.md", "WORKFLOWS.md", "METRICS.md")
 
 
 class PackageTests(unittest.TestCase):
