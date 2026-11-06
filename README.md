@@ -85,6 +85,8 @@ replace the whole entry. A user-scoped `--isolated=true` does not change a proje
 Use [the session recovery procedure](GUIDE.md#recover-or-remove-a-browser-connection)
 when changing profiles, updating, or uninstalling. Updating or uninstalling this
 instruction plugin leaves the separately registered server configuration intact.
+For a stalled stdio startup, use [a bounded health check](GUIDE.md#bound-a-stalled-startup-check)
+while inspecting the existing registration.
 
 The package version is pinned to the version used for the examples. To upgrade,
 review upstream releases, update the package argument, and recheck tool discovery
@@ -226,6 +228,8 @@ MCP scope precedence, and separate registration persistence through plugin updat
 and uninstall. Fault cases cover duplicate registration, wrong-scope and repeated
 removal, truncated project configuration, and diagnosis/recovery of an invalid
 local plugin update followed by repeated update, uninstall, and reinstall.
+It also checks a command-scoped startup timeout against a silent stdio peer,
+then verifies a healthy handshake with the same registration.
 See [interrupted local update recovery](GUIDE.md#recover-from-an-interrupted-local-update)
 for the observed Claude Code 2.1.319 update limitation.
 It creates temporary home and Claude configuration directories and removes them

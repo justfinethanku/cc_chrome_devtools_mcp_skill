@@ -71,10 +71,11 @@ class ClaudeInstallationTests(unittest.TestCase):
         self.marketplace = json.loads(
             (self.package / ".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
 
-    def cli(self, *arguments, success=True):
+    def cli(self, *arguments, success=True, environment=None, timeout=60):
         result = subprocess.run(
-            [self.claude, *map(str, arguments)], cwd=self.base, env=self.env,
-            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+            [self.claude, *map(str, arguments)], cwd=self.base,
+            env={**self.env, **(environment or {})},
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout,
         )
         if success:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -209,6 +210,54 @@ class ClaudeInstallationTests(unittest.TestCase):
         effective = self.cli("mcp", "get", "chrome-devtools").stdout
         self.assertIn(replacement, effective)
         self.assertNotIn(original, effective)
+
+    def test_bounded_startup_check_preserves_registration_and_allows_recovery(self):
+        peer = self.base / "health_peer.py"
+        events = self.base / "health_events.jsonl"
+        mode = self.base / "health_mode.txt"
+        mode.write_text("silent", encoding="utf-8")
+        peer.write_text('''import json, pathlib, sys
+events, mode = map(pathlib.Path, sys.argv[1:])
+def record(value):
+    with events.open("a", encoding="utf-8") as stream:
+        stream.write(value + "\\n")
+record("start")
+for line in sys.stdin:
+    request = json.loads(line)
+    record(request.get("method", "unknown"))
+    if mode.read_text(encoding="utf-8") == "silent" or "id" not in request:
+        continue
+    if request["method"] == "initialize":
+        result = {"protocolVersion": request["params"]["protocolVersion"],
+                  "capabilities": {"tools": {}},
+                  "serverInfo": {"name": "synthetic-health-peer", "version": "1"}}
+    elif request["method"] == "tools/list":
+        result = {"tools": []}
+    else:
+        result = {}
+    print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": result}),
+          flush=True)
+''', encoding="utf-8")
+        self.cli("mcp", "add", "--scope", "project", "chrome-devtools", "--",
+                 sys.executable, peer, events, mode)
+        (self.config / "settings.json").write_text(
+            json.dumps({"enabledMcpjsonServers": ["chrome-devtools"]}), encoding="utf-8")
+        registration = (self.base / ".mcp.json").read_bytes()
+        for state in ("silent", "silent", "healthy"):
+            with self.subTest(peer=state):
+                mode.write_text(state, encoding="utf-8")
+                details = self.cli("mcp", "get", "chrome-devtools",
+                                   environment={"MCP_TIMEOUT": "2000"}, timeout=10)
+                self.assertIn("Scope: Project config", details.stdout)
+                self.assertIn(str(peer), details.stdout)
+                self.assertIn("Connected" if state == "healthy" else "Failed to connect",
+                              details.stdout)
+                self.assertEqual((self.base / ".mcp.json").read_bytes(), registration)
+        recorded = events.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(recorded.count("start"), 3)
+        self.assertEqual(recorded.count("initialize"), 3)
+        self.assertEqual(recorded.count("tools/list"), 1)
+        self.assertNotIn("MCP_TIMEOUT", self.env)
 
     def test_truncated_project_config_can_be_repaired_without_losing_other_servers(self):
         self.register_inert_server("user", "--isolated=true")

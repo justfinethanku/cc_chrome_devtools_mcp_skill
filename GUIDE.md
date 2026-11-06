@@ -138,10 +138,46 @@ separate lifecycles. Plugin update and uninstall leave a server registered with
 server until it stops or restarts. Removing a registration changes future
 configuration; it does not terminate every client already using that server.
 
+### Bound a stalled startup check
+
+`claude mcp get` health-checks the selected registration and can start its stdio
+command. Each invocation starts another check; repeating it against a command
+that never answers initialization repeats the startup wait. Updating the
+instruction plugin does not repair that separate command.
+
+For an already installed stdio server that is stalled during startup, inspect
+it from the affected project's root with a short diagnostic budget in a POSIX
+shell:
+
+```bash
+MCP_TIMEOUT=2000 claude mcp get chrome-devtools
+```
+
+This sets the startup timeout to 2,000 milliseconds for this command only, plus
+CLI overhead. It leaves the saved registration and normal Claude sessions
+unchanged. Read the reported scope and arguments even if the status says
+`Failed to connect`; the tested CLI exits zero for that status, so the exit code
+alone does not establish a working connection. Keep the result while diagnosing
+an unchanged entry, and check again after an actual configuration or server fix.
+
+A first `npx` download or a healthy but slow startup can exceed this short budget.
+After repairing the command, run `claude mcp get chrome-devtools` with enough
+startup time to verify it normally. Do not save the short diagnostic budget as a
+permanent setting. See [Claude Code's startup timeout setting](https://code.claude.com/docs/en/mcp#installing-mcp-servers).
+
+This budget covers MCP initialization, not Chrome launch, CDP attachment, or tool
+execution. A connected MCP server can still point at a stale browser endpoint
+because Chrome connects on first browser tool use. For that failure, use the
+profile and endpoint checks below instead of repeating successful health checks.
+The timeout and recovery controls were checked with Claude Code 2.1.319 and
+synthetic silent/healthy stdio peers, without launching a browser.
+
 ### Recover the intended profile
 
 1. Run `claude mcp get chrome-devtools` from the affected project's root. Inspect
-   the reported scope, command, package version, and arguments. In Claude Code's
+   the reported scope, command, package version, and arguments. For a stalled
+   stdio startup, use [the bounded diagnostic command](#bound-a-stalled-startup-check).
+   In Claude Code's
    CLI, local scope takes precedence over approved project scope, then user
    scope; entries replace one another in full, without merging isolation flags.
    Project entries still require the normal workspace trust and MCP approval flow. Other client
