@@ -52,6 +52,12 @@ for a fresh test profile. Local debugging ports permit control by other local
 applications; a WebSocket URL is not an authentication mechanism. `--wsHeaders`
 only passes headers to an endpoint that already enforces authentication.
 
+After a disconnect, browser restart, or configuration change, verify the effective
+registration from the current project and confirm the expected test tabs before
+interacting. A stale HTTP debugging address can reconnect to another browser if
+its port is reused. Plugin update or removal does not remove separately registered
+servers. See [session recovery and removal](GUIDE.md#recover-or-remove-a-browser-connection).
+
 ### Page content and captured artifacts
 
 Page text, accessibility snapshots, console messages, and network responses are
