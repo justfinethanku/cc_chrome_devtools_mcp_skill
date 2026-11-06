@@ -223,7 +223,11 @@ The suite checks direct loading from an arbitrarily named checkout, local
 marketplace discovery and installation, the installed skill inventory and file
 contents, manual-copy reference availability, rejection of invalid metadata,
 MCP scope precedence, and separate registration persistence through plugin update
-and uninstall.
+and uninstall. Fault cases cover duplicate registration, wrong-scope and repeated
+removal, truncated project configuration, and diagnosis/recovery of an invalid
+local plugin update followed by repeated update, uninstall, and reinstall.
+See [interrupted local update recovery](GUIDE.md#recover-from-an-interrupted-local-update)
+for the observed Claude Code 2.1.319 update limitation.
 It creates temporary home and Claude configuration directories and removes them
 after each test. MCP lifecycle tests register an inert Python command that exits
 without network access; the CLI may start it while inspecting configuration.

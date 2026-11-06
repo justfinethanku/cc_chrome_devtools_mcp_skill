@@ -184,6 +184,126 @@ class ClaudeInstallationTests(unittest.TestCase):
                 self.cli("mcp", "remove", "--scope", scope, "chrome-devtools")
         self.assertNotEqual(self.cli("mcp", "get", "chrome-devtools", success=False).returncode, 0)
 
+    def test_rejected_duplicate_and_wrong_scope_removal_preserve_registration(self):
+        original = "--isolated=true"
+        replacement = "--browserUrl=http://127.0.0.1:19224"
+        self.register_inert_server("user", original)
+        for arguments in (
+                ("mcp", "add", "--scope", "user", "chrome-devtools", "--",
+                 sys.executable, "-c", "pass", replacement),
+                ("mcp", "remove", "--scope", "project", "chrome-devtools")):
+            with self.subTest(operation=arguments):
+                result = self.cli(*arguments, success=False)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                effective = self.cli("mcp", "get", "chrome-devtools").stdout
+                self.assertIn("Scope: User config", effective)
+                self.assertIn(original, effective)
+                self.assertNotIn(replacement, effective)
+        self.cli("mcp", "remove", "--scope", "user", "chrome-devtools")
+        repeated = self.cli("mcp", "remove", "--scope", "user", "chrome-devtools",
+                            success=False)
+        self.assertNotEqual(repeated.returncode, 0)
+        self.assertNotEqual(self.cli("mcp", "get", "chrome-devtools", success=False).returncode, 0)
+        # Explicit replacement is the successful control after rejected retries.
+        self.register_inert_server("user", replacement)
+        effective = self.cli("mcp", "get", "chrome-devtools").stdout
+        self.assertIn(replacement, effective)
+        self.assertNotIn(original, effective)
+
+    def test_truncated_project_config_can_be_repaired_without_losing_other_servers(self):
+        self.register_inert_server("user", "--isolated=true")
+        endpoint = "--browserUrl=http://127.0.0.1:19225"
+        self.register_inert_server("project", endpoint)
+        self.cli("mcp", "add", "--scope", "project", "unrelated-server", "--",
+                 sys.executable, "-c", "pass", "unrelated-marker")
+        (self.config / "settings.json").write_text(
+            json.dumps({"enabledMcpjsonServers": ["chrome-devtools"]}), encoding="utf-8")
+        project = self.base / ".mcp.json"
+        intact = project.read_bytes()
+        original = json.loads(intact)
+        self.assertIn(endpoint, self.cli("mcp", "get", "chrome-devtools").stdout)
+        # Model an interrupted file write, not an actual process-kill race.
+        truncated = b'{"mcpServers":'
+        project.write_bytes(truncated)
+        rejected = self.cli("mcp", "remove", "--scope", "project", "chrome-devtools",
+                            success=False)
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertEqual(project.read_bytes(), truncated)
+        fallback = self.cli("mcp", "get", "chrome-devtools").stdout
+        self.assertIn("Scope: User config", fallback)
+        self.assertIn("--isolated=true", fallback)
+        self.assertNotIn(endpoint, fallback)
+        # Restore the saved file before scoped removal; preserve the other entry.
+        project.write_bytes(intact)
+        self.assertIn(endpoint, self.cli("mcp", "get", "chrome-devtools").stdout)
+        self.cli("mcp", "remove", "--scope", "project", "chrome-devtools")
+        remaining = json.loads(project.read_text(encoding="utf-8"))["mcpServers"]
+        self.assertNotIn("chrome-devtools", remaining)
+        self.assertEqual(remaining["unrelated-server"],
+                         original["mcpServers"]["unrelated-server"])
+        self.assertIn("--isolated=true", self.cli("mcp", "get", "chrome-devtools").stdout)
+
+    def test_invalid_local_update_is_diagnosable_and_repairable(self):
+        plugin_id = f"{PLUGIN}@{self.marketplace['name']}"
+        self.cli("plugin", "marketplace", "add", self.package)
+        self.cli("plugin", "install", plugin_id)
+        profile = self.base / "persistent-profile"
+        profile.mkdir()
+        sentinel = profile / "keep.txt"
+        sentinel.write_bytes(b"synthetic profile data")
+        marker = f"--userDataDir={profile}"
+        self.register_inert_server("user", marker)
+        manifest = self.package / ".claude-plugin/plugin.json"
+        manifest.write_text('{"version":', encoding="utf-8")
+        validation = self.cli("plugin", "validate", self.package, "--json", success=False)
+        self.assertNotEqual(validation.returncode, 0)
+        self.assertFalse(json.loads(validation.stdout)["success"])
+        # Deliberately bypass validation to model updating from a broken checkout.
+        # 2.1.319 reports success here; don't require that upstream defect forever.
+        self.cli("plugin", "update", plugin_id, success=False)
+        records = json.loads(self.cli("plugin", "list", "--json").stdout)
+        self.assertEqual(len(records), 1, records)
+        details = self.cli("plugin", "details", PLUGIN, success=False)
+        if details.returncode:
+            self.assertTrue(records[0].get("errors"), records)
+        else:
+            # A future atomic refusal may retain a usable previous installation.
+            self.assert_inventory(details.stdout)
+            self.assertFalse(records[0].get("errors"), records)
+            for name in PAYLOAD:
+                self.assertEqual((Path(records[0]["installPath"]) / name).read_bytes(),
+                                 (ROOT / name).read_bytes())
+        self.assertIn(marker, self.cli("mcp", "get", "chrome-devtools").stdout)
+
+        manifest.write_text(json.dumps(dict(self.manifest, version="99.0.0")),
+                            encoding="utf-8")
+        guide = self.package / "GUIDE.md"
+        guide.write_text(guide.read_text(encoding="utf-8") + "\nRecovery payload marker.\n",
+                         encoding="utf-8")
+        repaired = self.cli("plugin", "validate", self.package, "--json")
+        self.assertTrue(json.loads(repaired.stdout)["success"])
+        for operation in ("update", "update", "uninstall", "uninstall", "install", "install"):
+            with self.subTest(operation=operation):
+                result = self.cli("plugin", operation, plugin_id, success=False)
+                records = json.loads(self.cli("plugin", "list", "--json").stdout)
+                if operation == "uninstall":
+                    # The repeated uninstall can fail; it must leave nothing installed.
+                    self.assertEqual(records, [])
+                else:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(len(records), 1, records)
+                    self.assertEqual(records[0]["id"], plugin_id)
+                    self.assertEqual(records[0]["version"], "99.0.0")
+                    self.assertFalse(records[0].get("errors"), records)
+                    self.assertIn(f"({PLUGIN}) 99.0.0",
+                                  self.cli("plugin", "details", PLUGIN).stdout)
+                    installed = Path(records[0]["installPath"])
+                    for name in PAYLOAD:
+                        self.assertEqual((installed / name).read_bytes(),
+                                         (self.package / name).read_bytes())
+                self.assertIn(marker, self.cli("mcp", "get", "chrome-devtools").stdout)
+                self.assertEqual(sentinel.read_bytes(), b"synthetic profile data")
+
 
 if __name__ == "__main__":
     unittest.main()
